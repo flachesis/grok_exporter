@@ -89,6 +89,7 @@ func testReplaceAll(t *testing.T, libonig *OnigurumaLib) {
 	for _, data := range [][]string{
 		[]string{"hollo", "hollo world", "hello", "hello world"},
 		[]string{"/[0-9]+", "/v1/api/1234", "/*", "/v1/api/*"},
+		[]string{"(.*?)/[0-9]+([^0-9]+.*|$)", "/v1/api/1234/action", `\1/*\2`, "/v1/api/*/action"},
 	} {
 		pattern := data[0]
 		input := data[1]

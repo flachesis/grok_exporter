@@ -27,6 +27,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"unsafe"
 )
 
@@ -144,6 +145,7 @@ func (regex *OnigurumaRegexp) ReplaceAll(input string, replacement string) strin
 	defer free(inputStart, inputEnd)
 
 	for {
+		totalCapNum := C.onig_number_of_captures(regex.regex)
 		r := C.onig_search(regex.regex, inputStart, inputEnd, searchStart, searchEnd, region, C.ONIG_OPTION_NONE)
 		if r == C.ONIG_MISMATCH {
 			buf.WriteString(input[start:])
@@ -161,6 +163,17 @@ func (regex *OnigurumaRegexp) ReplaceAll(input string, replacement string) strin
 				searchStart = (*C.OnigUChar)(unsafe.Pointer(uintptr(unsafe.Pointer(searchStart)) + uintptr(regionEnd)))
 				if start < int(regionEnd) {
 					start = int(regionEnd)
+					if strings.Contains(replacement, `\`) {
+						for capNum := 1; capNum < int(totalCapNum)+1; capNum++ {
+							backrefStr := fmt.Sprintf("\\%d", capNum)
+							if idx := strings.Index(replacement, backrefStr); idx >= 0 {
+								backrefBeg := getPos(region.beg, C.int(capNum))
+								backrefEnd := getPos(region.end, C.int(capNum))
+								backrefCapturedStr := input[int(backrefBeg):int(backrefEnd)]
+								replacement = strings.Replace(replacement, backrefStr, backrefCapturedStr, -1)
+							}
+						}
+					}
 					buf.WriteString(replacement)
 				}
 			}
