@@ -32,7 +32,7 @@ function make_release {
     EXTENSION=$3
     echo "Building grok_exporter-$VERSION.$ARCH"
     mkdir -p dist/grok_exporter-$VERSION.$ARCH
-    if [[ $ARCH == darwin* ]] || [[ $ARCH == linux* ]] ; then
+    if [[ $ARCH == darwin* ]] || [[ $ARCH == linux* ]] || [[ $ARCH == freebsd* ]] ; then
         # The compile script in the Docker image sets CGO_LDFLAGS to libonig.a, which should make grok_exporter
         # statically linked with the Oniguruma library. However, this doesn't work on Darwin and CentOS 6.
         # As a workaround, we set LDFLAGS directly in the header of oniguruma.go.
@@ -44,7 +44,7 @@ function make_release {
         # export CGO_LDFLAGS=/usr/local/lib/libonig.a
         go build -ldflags "$VERSION_FLAGS" -o dist/grok_exporter-$VERSION.$ARCH/grok_exporter .
     fi
-    if [[ $ARCH == darwin* ]] || [[ $ARCH == linux* ]] ; then
+    if [[ $ARCH == darwin* ]] || [[ $ARCH == linux* ]] || [[ $ARCH == freebsd* ]]; then
         # Undo workaround with LDFLAGS in oniguruma.go
         mv exporter/oniguruma.go.bak exporter/oniguruma.go
     fi
