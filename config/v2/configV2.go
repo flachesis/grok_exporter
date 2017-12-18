@@ -86,6 +86,30 @@ type MetricConfig struct {
 	DeleteMatch          string               `yaml:"delete_match,omitempty"`
 	DeleteLabels         map[string]string    `yaml:"delete_labels,omitempty"` // TODO: Make sure that DeleteMatch is not nil if DeleteLabels are used.
 	DeleteLabelTemplates []templates.Template `yaml:"-"`                       // parsed version of DeleteLabels, will not be serialized to yaml.
+	Mutate               []MutateConfig       `yaml:",flow,omitempty"`
+}
+
+type MutateConfig struct {
+	Filter string      `yaml:",omitempty"`
+	Input  MutateInput `yaml:",omitempty"`
+}
+
+type MutateInput struct {
+	Hash  map[string]string
+	Array []string
+}
+
+func (m *MutateInput) UnmarshalYAML(unmarshall func(interface{}) error) error {
+	hash := make(map[string]string)
+	if err := unmarshall(&hash); err != nil {
+		array := make([]string, 0, 3)
+		if err = unmarshall(&array); err != nil {
+			return err
+		}
+		m.Array = array
+	}
+	m.Hash = hash
+	return nil
 }
 
 type MetricsConfig []MetricConfig

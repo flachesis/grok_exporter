@@ -58,11 +58,13 @@ type metricWithLabels struct {
 	labelTemplates       []templates.Template
 	deleteLabelTemplates []templates.Template
 	labelValueTracker    LabelValueTracker
+	mutators             []Mutator
 }
 
 type observeMetricWithLabels struct {
 	metricWithLabels
 	valueTemplate templates.Template
+	mutators      []Mutator
 }
 
 type counterMetric struct {
@@ -194,6 +196,7 @@ func (m *metricWithLabels) processMatch(line string, cb func(labels map[string]s
 		if err != nil {
 			return nil, err
 		}
+		mutateLabels(labels, m.mutators)
 		m.labelValueTracker.Observe(labels)
 		cb(labels)
 		return &Match{
@@ -220,6 +223,7 @@ func (m *observeMetricWithLabels) processMatch(line string, cb func(value float6
 		if err != nil {
 			return nil, err
 		}
+		mutateLabels(labels, m.mutators)
 		m.labelValueTracker.Observe(labels)
 		cb(floatVal, labels)
 		return &Match{
@@ -386,6 +390,7 @@ func newMetricWithLabels(cfg *configuration.MetricConfig, regex, deleteRegex *On
 		labelTemplates:       cfg.LabelTemplates,
 		deleteLabelTemplates: cfg.DeleteLabelTemplates,
 		labelValueTracker:    NewLabelValueTracker(prometheusLabels(cfg.LabelTemplates)),
+		mutators:             CreateMutators(cfg.Mutate),
 	}
 }
 
@@ -399,6 +404,7 @@ func newObserveMetric(cfg *configuration.MetricConfig, regex, deleteRegex *Onigu
 func newObserveMetricWithLabels(cfg *configuration.MetricConfig, regex, deleteRegex *OnigurumaRegexp) observeMetricWithLabels {
 	return observeMetricWithLabels{
 		metricWithLabels: newMetricWithLabels(cfg, regex, deleteRegex),
+		mutators:         CreateMutators(cfg.Mutate),
 		valueTemplate:    cfg.ValueTemplate,
 	}
 }
@@ -525,4 +531,10 @@ func prometheusLabels(templates []templates.Template) []string {
 		promLabels = append(promLabels, t.Name())
 	}
 	return promLabels
+}
+
+func mutateLabels(labels map[string]string, mutators []Mutator) {
+	for _, mutator := range mutators {
+		mutator.apply(&labels)
+	}
 }

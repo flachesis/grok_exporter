@@ -35,6 +35,9 @@ func TestOniguruma(t *testing.T) {
 	run(t, "invalid capture groups", func(t *testing.T) {
 		testInvalidCaptureGroups(t, libonig)
 	})
+	run(t, "replace patterns", func(t *testing.T) {
+		testReplaceAll(t, libonig)
+	})
 }
 
 func testInvalidPatterns(t *testing.T, libonig *OnigurumaLib) {
@@ -78,6 +81,29 @@ func testValidPatterns(t *testing.T, libonig *OnigurumaLib) {
 			t.Errorf("pattern '%v' matched string '%v'", data[0], data[2])
 		}
 		unsuccessfulMatch.Free()
+		regex.Free()
+	}
+}
+
+func testReplaceAll(t *testing.T, libonig *OnigurumaLib) {
+	for _, data := range [][]string{
+		[]string{"hollo", "hollo world", "hello", "hello world"},
+		[]string{"/[0-9]+", "/v1/api/1234", "/*", "/v1/api/*"},
+	} {
+		pattern := data[0]
+		input := data[1]
+		replacement := data[2]
+		expected := data[3]
+
+		regex, err := libonig.Compile(pattern)
+		if err != nil {
+			t.Error(err)
+		}
+		actual := regex.ReplaceAll(input, replacement)
+		if actual != expected {
+			t.Errorf("pattern '%v' with input string '%v' didn't replace matches with '%v' (expect:'%v', actual:'%v')",
+				pattern, input, replacement, expected, actual)
+		}
 		regex.Free()
 	}
 }

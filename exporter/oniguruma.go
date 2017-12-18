@@ -24,6 +24,7 @@ package exporter
 */
 import "C"
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"unsafe"
@@ -131,6 +132,46 @@ func (regex *OnigurumaRegexp) Match(input string) (*OnigurumaMatchResult, error)
 			input:  input,
 		}, nil
 	}
+}
+
+func (regex *OnigurumaRegexp) ReplaceAll(input string, replacement string) string {
+	var buf bytes.Buffer
+	region := C.onig_region_new()
+	inputStart, inputEnd := pointers(input)
+	searchStart, searchEnd := inputStart, inputEnd
+	start := 0
+	end := len(input)
+	defer free(inputStart, inputEnd)
+
+	for {
+		r := C.onig_search(regex.regex, inputStart, inputEnd, searchStart, searchEnd, region, C.ONIG_OPTION_NONE)
+		if r == C.ONIG_MISMATCH {
+			buf.WriteString(input[start:])
+			start = end
+		} else if r < 0 {
+			buf.WriteString(input[start:])
+			start = end
+		} else {
+			for i := 0; i < int(region.num_regs); i++ {
+				regionBeg := getPos(region.beg, C.int(i))
+				regionEnd := getPos(region.end, C.int(i))
+				if start < int(regionBeg) {
+					buf.WriteString(input[start:int(regionBeg)])
+				}
+				searchStart = (*C.OnigUChar)(unsafe.Pointer(uintptr(unsafe.Pointer(searchStart)) + uintptr(regionEnd)))
+				if start < int(regionEnd) {
+					start = int(regionEnd)
+					buf.WriteString(replacement)
+				}
+			}
+		}
+		if start >= end {
+			break
+		}
+	}
+	C.onig_region_free(region, 1)
+
+	return buf.String()
 }
 
 func (m *OnigurumaMatchResult) Get(name string) (string, error) {
